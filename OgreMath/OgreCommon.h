@@ -3,8 +3,10 @@
 
 #define _OgreExport
 
+#include <memory.h>
 #include <iostream>
 #include <cassert>
+#include <cstdlib>
 
 #define _USE_MATH_DEFINES
 #include <cmath>
