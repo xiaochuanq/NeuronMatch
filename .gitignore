@@ -4,3 +4,7 @@ Debug
 Debug/*
 .project
 .cproject
+ANN/ann2fig/*.o
+ANN/src/*.o
+ANN/test/*.o
+ANN/sample/*.o
