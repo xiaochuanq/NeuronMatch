@@ -1,10 +1,7 @@
 Data
 Data/*
-Debug
-Debug/*
+Build
+Build/*
 .project
 .cproject
-ANN/ann2fig/*.o
-ANN/src/*.o
-ANN/test/*.o
-ANN/sample/*.o
+*~
