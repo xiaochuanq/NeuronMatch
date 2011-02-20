@@ -28,10 +28,11 @@ private:
     float m_fDiameter;
 };
 
-class Neuron
+class NeuronModel
 {
 public:
-    Neuron();
+    NeuronModel();
+    ~NeuronModel();
     void addNode();
     void resample(float step);
     void vectorize();
@@ -44,6 +45,7 @@ private:
     NeuronNode* m_pSoma; // root;
     Vector4 m_v4zenith;
     Vector4 m_v4azimuth;
+    vector<NeuronNode*> m_vecNodePtrArry
     float m_fMaxR;
     std::vector<Vector4> m_vv4Samples;
     std::vector<Vector4> m_vv4Edges;
