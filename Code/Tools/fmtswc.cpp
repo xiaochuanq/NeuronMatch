@@ -9,14 +9,12 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>11
-
+#include <unistd.h>
+#include <errno.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <list>
-
-#include <errno.h>
 
 using namespace std;
 
@@ -60,7 +58,35 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-int fmtswc(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+void fmtswc(istream& inswc, ostream& outswc, const string& name, const string& name)
+{
+	// assuming the file formats are correct, otherwise throw exceptions
+	string buffer;
+	getline(inswc, buffer);
+	while(inswc){ // skip all the comments
+		size_t pos = buffer.find_first_not_of(" \t"); // skill possible blank spaces
+		if(pos != string::npos && buffer[pos] != '#') // and check if it is a '#'
+			break; //stops only when it is a non empty string not starting with #.
+		getline( inswc, buffer );
+	}
+
+	list<string> data; // buffer all data
+	while( inswc ){
+		getline(inswc, buffer);
+		data.push_back( buffer );
+	}
+
+	size_t pos = data.back().find_first_of(" \t"); // assuming all data line begin with numbers
+	string largest_id = data.back().substr(0, pos);
+	// use the number inside the file instead of our statistics. Just in case there are
+	// non-continuous numbering.
+
+	outswc << "# " << type << " " << name << largest_id << endl; // write a new header
+	for (list<string>::const_iterator it = data.begin(); it != data.end(); ++it) // write all data
+		outswc << *it << endl;
+}
+
+int filefmt(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
 	if( 1 != ftwbuf->level)
 		return 0;
@@ -83,34 +109,7 @@ int fmtswc(const char *fpath, const struct stat *sb, int typeflag, struct FTW *f
 				type = type.substr(pos+1);
 		} // type is the neuron type extracted from fpath
 
-		string buffer;
-		getline(inswc, buffer);
-		while(inswc){ // skip all the comments
-			size_t pos = buffer.find_first_not_of(" \t");
-			if(pos != string::npos && buffer[pos] != '#')
-				break; //stops only when it is a non empty string not starting with #.
-			getline( inswc, buffer );
-		}
-		outswc << "# " << type << " " << time(0) << endl; // add type to the first line.
-		list<string> data;
-		while( !inswc ){
-			getline(inswc, buffer);
-			data.push_back( buffer );
-		}
 
-		pos = data.back().find_first_of(" \t");
-		string total_num = "-" + data.back().substr(0, pos);
-
-		pos = data.front().find_last_of('-');
-		if( pos != string::npos ){
-			cout << "Invalid SWC file " << fpath <<endl;
-			exit(0);
-		}
-		data.front().erase(pos);
-		data.front().append(total_num);
-
-		for(list<string>::const_iterator it = data.begin(); it != data.end(); ++it)
-			outswc << *it << endl;
 		N++;
 	}
 	if( typeflag == FTW_D){

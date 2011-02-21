@@ -5,6 +5,15 @@
 #include <iostream>
 #include "../OgreMath/OgreMath.h"
 
+enum NeuronType
+{
+	INVALID = -1, 	//for error caught
+	UNKNOWN, 		// types unidentified until now
+	UNCLASSIFIED,   	// types subject to further classification
+	PYRAMIDAL,
+	GRANULE
+};
+
 class NeuronNode
 {
 	friend class Neuron;
@@ -37,15 +46,16 @@ public:
     void resample(float step);
     void vectorize();
     const NeuronNode* root(){ return m_pSoma; };
-    int type();
+    NeuronType type();
+
     const Vector4& zenith() { return m_v4zenith;}
     const Vector4& azimuth() { return m_v4azimuth; }
 private:
-    int m_nType;
+    NeuronType m_enType;
     NeuronNode* m_pSoma; // root;
     Vector4 m_v4zenith;
     Vector4 m_v4azimuth;
-    vector<NeuronNode*> m_vecNodePtrArry
+    vector<NeuronNode*> m_vNodePtrArry;
     float m_fMaxR;
     std::vector<Vector4> m_vv4Samples;
     std::vector<Vector4> m_vv4Edges;
