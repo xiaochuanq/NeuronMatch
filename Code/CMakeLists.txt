@@ -1,3 +1,7 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.5 FATAL_ERROR)
+#add_subdirectory(Math)
 
-ADD_SUBDIRECTOR(ANN NeuronModel OgreMath Tools Descriptor)
+add_executable (loadneuron loadneuron.cpp neuron.cpp)
+#add_executable (nclassify nclassify.cpp)
+
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)

@@ -570,6 +570,16 @@ namespace Ogre
                 method will guarantee to generate one of them. If you need more
                 control you should use the Quaternion class.
         */
+	inline Vector3 card2spher()
+	{
+		Vector3 temp;
+		temp.z = length(); // radius
+		temp.x = acos(x / sqrt( x*x + y*y) ); // azimuth angle
+		if( y < 0)
+			temp.x = -temp.x;
+		temp.y = asin(z / temp.z ); // zenith angle
+		return temp;
+	}
 
         inline Vector3 perpendicular(void) const
         {
