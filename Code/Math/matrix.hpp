@@ -226,8 +226,9 @@ public:
    matrixT& operator = (const matrixT& m) _NO_THROW;
 
    // Rotate shift rows
-   void rotshift(int num_rows);
-   MatrixT& concat();
+   void rshrows(int num_rows);
+   // swap two rows
+   void swaprows(int i, int j);
 
    // Value extraction method
    size_t RowNo () const { return _m->Row; }
@@ -351,26 +352,37 @@ matrixT::~matrix ()
 }
 
 MAT_TEMPLATE inline void
-matrixT::rotshift(int num_rows)
+matrixT::rshrows(int num_rows)
 {
+	if (_m->Refcnt > 1) clone();
 	if( !num_rows || !_m->Row )
 		return;
-	int dir = (num_row > 0) ? 1 : -1; //+1, shift down, -1: shift up
-	num_row %= _m->Row;
-	int** temp = new int*[ num_rows];
+	int dir = (num_rows > 0) ? 1 : -1; //+1, shift down, -1: shift up
+	num_rows %= _m->Row;
+	T** temp = new T*[ num_rows];
 	if( dir > 0){
-		std::copy(_m->Val, _m->Val+num_row, temp);
-		for( int i = num_row; i < _m->Row; ++i )
-			_m->Val[i - num_row ] = _m->Val[ i ];
-		std::copy( temp, temp + _m->Row, _m->Val + _m->Row - num_row);
+		std::copy(_m->Val, _m->Val + num_rows, temp);
+		for( size_t i = num_rows; i < _m->Row; ++i )
+			_m->Val[i - num_rows ] = _m->Val[ i ];
+		std::copy( temp, temp + _m->Row, _m->Val + _m->Row - num_rows);
 	}
 	else {
-		std::copy( _m->Val + _m->Row - num_row , _m->Val + _m->Row, temp);
-		for( int i = 0; i < _m->Row - num_row; ++i )
-			_m->Val[ i ] = _m->Val[ i + num_row ];
+		std::copy( _m->Val + _m->Row - num_rows , _m->Val + _m->Row, temp);
+		for( size_t i = 0; i < _m->Row - num_rows; ++i )
+			_m->Val[ i ] = _m->Val[ i + num_rows ];
 		std::copy( temp, temp + _m->Row, _m->Val);
 	}
 	delete temp;
+}
+
+MAT_TEMPLATE inline void
+matrixT::swaprows(int i, int j)
+{
+	if( i == j )
+		return;
+	if (_m->Refcnt > 1)
+		clone();
+	std::swap( _m->Val[i], _m->Val[j] );
 }
 
 // assignment operator
