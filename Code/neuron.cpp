@@ -59,14 +59,14 @@ Neuron::Neuron(ifstream& fs)
 	m_pSoma->Coordinate = Vector3(0.0f);
 }
 
-void Neuron::dump(){
+void Neuron::dump() const {
 	for( size_t i = 1; i < m_vNodePtrArry.size(); ++i)
 		cout << *m_vNodePtrArry[i] << endl;;
 	cout << endl;
 	traverse_dump(m_pSoma);
 }
 
-void Neuron::traverse_dump( NeuronNode* node)
+void Neuron::traverse_dump( NeuronNode* node) const
 {
 	if( node ){
 		cout << *node << endl;
@@ -105,9 +105,8 @@ void Neuron::sample( NeuronNode* proot, float steplen, float start)
 		NeuronNode* pchild = *iter;
 		float d1 = pchild->Diameter;
 		Vector3 dir = pchild->Coordinate - proot->Coordinate; //get direction
-		float len = dir.length();
+		float len = dir.normalise();
 		float len_1 = 1/len;
-		dir *= len_1;
 		Vector3 pos = proot->Coordinate + start * dir;
 		Vector3 step = dir * steplen;
 		while( start < len ){
