@@ -17,57 +17,79 @@ using std::vector;
 using std::pair;
 
 class Descriptor;
-Matrixf vv2matrix( const vector<Vector3>& points ); // dump a vector of Vector3 to a matrix
-bool is_comparable( const Descriptor &, const Descriptor & );
-float distance( const Descriptor &, const Descriptor & );
+Matrixf vv2matrix(const vector<Vector3>& points); // dump a vector of Vector3 to a matrix
+bool is_comparable(const Descriptor &, const Descriptor &);
+float distance(const Descriptor &, const Descriptor &);
 
-struct Parameter{
-	int nz;
-	int na;
+class Parameter {
+public:
+	friend class Descriptor;
+	friend class SphericalMesh;
+	Parameter(size_t z, size_t a, float r, float b = 0) :
+		nz(z), na(a), dr(r), brate(b), dz(pi/nz), da(two_pi/na) {};
+private:
+	void update_nr(float rmax){ nr = std::ceil( rmax / dr); }
+	size_t nz;
+	size_t na;
 	float dr;
 	float brate;
+	float dz;
+	float da;
+	size_t nr;
 	// TODO: add function ptr to weighting function
 };
 
 typedef pair<float, float> Range;
-struct SphericalMesh{
+struct SphericalMesh {
 	vector<Range> zenithLimits;
 	vector<Range> azimuthLimits;
 	vector<Range> radiusLimits;
-	int create( const Parameter&, float);
-	void get_index(const Vector3 & , int& , int& , int& );
-	void blur( float rate);
+	void create(const Parameter&);
+	void get_index(const Vector3 &, size_t&, size_t&, size_t&);
+	void blur(const Parameter&);
 };
 
 class Neuron;
-class Descriptor
-{
+class Descriptor {
 public:
-	Descriptor( const Parameter& param)
-		: m_Param( param) , m_Size( vector<int>(3, 0) ) {};
+	Descriptor(const Parameter& param) :m_Param(param){	};
 	~Descriptor();
 public:
-	bool is_blurred() const { return m_Param.brate > eps; }
-	bool empty() const { return m_vHistPtr.empty(); }
-	void dump( const char * file = 0) const {};
-	int dimension() const { return m_Size.size(); }
-	size_t size( size_t dim ) const { return dim < m_Size.size() ? m_Size[dim] : 0; }
-	void extract( const Neuron&);
+	float operator()(size_t i, size_t j, size_t k) const {
+		return m_vHistPtr[k]->operator ()(i, j);
+	}
+//	float& operator()(size_t i, size_t j, size_t k) {
+//		return m_vHistPtr[k]->operator ()(i, j);
+//	}
+	bool is_blurred() const {
+		return m_Param.brate > eps;
+	}
+	bool empty() const {
+		return m_vHistPtr.empty();
+	}
+	void dump(const char * file, const char* name) const;
+
+	size_t size_a() const { return m_Param.na; }
+	size_t size_z() const { return m_Param.nz; }
+	size_t page() const { return m_Param.na; }
+	size_t height() const { return m_Param.na * m_Param.nz; }
+	size_t width() const { return m_Param.nr; }
+
+	void extract(const Neuron&);
 private:
 	Vector3 calcZenith(const Matrixf&);
 	float alignZenith(const Vector3&);
-	void gatherPoints(const Neuron& );
-	void calcWeights(){};
+	void gatherPoints(const Neuron&);
+	//void calcWeights() { };
 	void createHist();
 	void flipHist();
 	void rotateHist();
 private:
 	Parameter m_Param; // parameters
 	SphericalMesh m_Mesh;//shape context mesh
-	vector<int> m_Size; // the descriptor size
 	vector<Vector3> m_Points; // all points collected to be used in the shape context descriptor
-	vector<float> m_Weights; // weights calculated corresponding to all the ponts above.
-    vector<Matrixf*> m_vHistPtr;
+	vector<float> m_Weights; // weights calculated corresponding to all the points above.
+	vector<Matrixf*> m_vHistPtr;
 };
 
 #endif /* DESC_H_ */

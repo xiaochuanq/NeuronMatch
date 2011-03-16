@@ -234,6 +234,26 @@ public:
    size_t RowNo () const { return _m->Row; }
    size_t ColNo () const { return _m->Col; }
 
+   T* row_major() const {
+	   T* data = new T[ _m->Row * _m->Col];
+	   T* p = data;
+	   for( int r = 0; r < _m->Row; ++r)
+	   {
+		   memcpy(p, _m->Val[r], _m->Col);
+		   p += _m->Col;
+	   }
+	   return data;
+   }
+
+   T* col_major() const{
+	   T* data = new T[ _m->Row * _m->Col];
+	   for( size_t r = 0; r < _m->Row; ++r){
+		   for( size_t c = 0; c < _m->Col; ++c){
+			   data[ r + c * _m->Row ] = (_m->Val[r])[c];
+		   }
+	   }
+	   return data;
+   }
    // Subscript operator
    T& operator () (size_t row, size_t col) _THROW_MATRIX_ERROR;
    T  operator () (size_t row, size_t col) const _THROW_MATRIX_ERROR;

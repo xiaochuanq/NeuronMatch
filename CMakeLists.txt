@@ -6,9 +6,11 @@ set(SRC_DIR ${CMAKE_SOURCE_DIR}/Code)
 set(DOC_DIR ${CMAKE_SOURCE_DIR}/Doc)
 set(TEST_DIR ${SRC_DIR}/Test)
 set(HEADER_DIR ${SRC_DIR}/Include)
+set(MATLAB_ROOT_DIR /Applications/MATLAB_R2010b.app)
 
 include_directories( ${HEADER_DIR} )
 include_directories( ${SRC_DIR}/Math )
+include_directories( ${MATLAB_ROOT_DIR}/extern/include )
 
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_CXX_COMPILER g++ )

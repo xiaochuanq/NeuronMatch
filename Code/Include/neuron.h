@@ -5,7 +5,7 @@
 #include <string>
 #include <istream>
 #include <ostream>
-#include "Math/OgreMath.h"
+#include "OgreMath.h"
 
 enum NeuronType{
 		INVALID = -1, //for error caught
@@ -48,14 +48,14 @@ public: //constructors
     ~Neuron();
     void resample(float);
 // get/set functions
-    int get_sa_num() const { return m_vv3Samples.size(); }
-    int get_bi_num() const { return m_vv3Bifurcations.size(); }
-    int get_edge_num() const { return m_vv3Edges.size(); }
+    size_t get_sa_num() const { return m_vv3Samples.size(); }
+    size_t get_bi_num() const { return m_vv3Bifurcations.size(); }
+    size_t get_edge_num() const { return m_vv3Edges.size(); }
     const std::vector<Vector3>& get_sa_points() const { return m_vv3Samples; }
     const std::vector<Vector3>& get_bi_points() const { return m_vv3Bifurcations; }
     const std::vector<Vector3>& get_edges() const { return m_vv3Edges; }
-    const std::vector<float> get_sa_diameters() const { return m_vSampleDiameters; }
-    const std::vector<float> get_bi_diameters() const { return m_vBifurDiameters; }
+    const std::vector<float>& get_sa_diameters() const { return m_vSampleDiameters; }
+    const std::vector<float>& get_bi_diameters() const { return m_vBifurDiameters; }
     NeuronType true_type() const { return m_nType; }
     NeuronType pred_type() const { return m_nPred; }
     const std::string& name() const { return m_strName; }

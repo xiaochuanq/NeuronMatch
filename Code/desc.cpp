@@ -4,7 +4,9 @@
  *  Created on: Mar 12, 2011
  *      Author: xiaochuanq
  */
+#include <memory>
 #include "desc.h"
+#include "dataio.h"
 #include "neuron.h"
 #include "myexception.hpp"
 
@@ -18,50 +20,76 @@ Matrixf vv2matrix(const vector<Vector3>& points) {
 } // dump a vector of Vector3 to a matrix
 
 bool is_comparable( const Descriptor & desc1, const Descriptor & desc2){
-	return desc1.size(0) == desc2.size(0);
+	return !desc1.empty() && !desc2.empty()
+			&& desc1.size_a() == desc2.size_a() && desc1.size_z() == desc2.size_z();
+}
+
+inline float chi_diff(float f1, float f2)
+{
+	float diff = f1 - f2;
+	diff *= diff;
+	return diff / (f1 + f2);
 }
 
 float distance( const Descriptor & desc1, const Descriptor & desc2){
-	return 0.0f;
+	if( is_comparable( desc1, desc2))
+		return -1.0f;
+	// check comparability before calling this function;
+	size_t ns = min( desc1.width(), desc2.width());
+	size_t nl = max( desc1.width(), desc2.width());
+	const Descriptor& desc_longer = desc1.width() > desc2.width() ? desc1 : desc2;
+	const Descriptor& desc_shorter = desc1.width() > desc2.width() ? desc2 : desc1;
+	vector<float> sum( desc1.page(), 0.0f);
+	float mindiff = inf;
+	size_t height = desc1.height();
+	for( size_t k = 0; k < desc1.page(); ++k)
+	{ // k: page # of rotated descriptors
+		for( size_t i = 0; i < height; ++i){ //i, iterates all zenith and azimuth angle bins
+			size_t j = 0;
+			for( ; j < ns; ++j) //j iterates all radius bins
+				sum[k] += chi_diff( desc_longer(i, j, 0), desc_shorter(i,j, k));
+			for( ; j < nl; ++j)
+				sum[k] += chi_diff( desc_longer(i, j, 0 ), 0);
+		}
+		mindiff = min( sum[k], mindiff);
+	}
+	return mindiff;
 }
 /////////////////////////////  Class Spherical Mesh ////////////////
-int SphericalMesh::create( const Parameter& param, float rmax)
+void SphericalMesh::create( const Parameter& param)
 {
 	zenithLimits.clear();
 	azimuthLimits.clear();
 	radiusLimits.clear();
 	float angle = - half_pi;
-	float delta = pi / param.nz;
 	Range rgn;
-	for (int i = 0; i < param.nz; ++i) {
+	for (size_t i = 0; i < param.nz; ++i) {
 		rgn.first = angle;
-		angle += delta;
+		angle += param.dz;
 		rgn.second = angle;
 		zenithLimits.push_back( rgn);
 	}
 	angle = -pi;
-	delta = two_pi / param.na;
-	for (int i = 0; i < param.na; ++i) {
+	for (size_t i = 0; i < param.na; ++i) {
 		rgn.first = angle;
-		angle += delta;
+		angle += param.da;
 		rgn.second = angle;
 		azimuthLimits.push_back(rgn);
 	}
-	int nr = std::ceil( rmax / param.dr);
+
 	float r = 0;
-	for (int i = 0; i < nr; ++i) {
+	for (size_t i = 0; i < param.nr; ++i) {
 		rgn.first = r;
 		r += param.dr;
 		rgn.second = r;
 		radiusLimits.push_back( rgn );
 	}
-	if( param.brate > eps)
-		blur( param.brate );
-	return nr;
+	blur( param );
 }
 
-void SphericalMesh::get_index(const Vector3 & sphCoord, int& zi, int& ai, int& ri)
+void SphericalMesh::get_index(const Vector3 & sphCoord, size_t& m, size_t& n, size_t& k)
 {
+	int zi, ai, ri;
 	zi = ai = ri = -1;
 	for (size_t i = 0; i < zenithLimits.size(); ++i) {
 		if (sphCoord.y >= zenithLimits[i].first && sphCoord.y
@@ -86,31 +114,31 @@ void SphericalMesh::get_index(const Vector3 & sphCoord, int& zi, int& ai, int& r
 	}
 	if ( zi < 0 || ai < 0 || ri < 0)
 		throw MyException("Invalid coordinates or range limits.");
+	m = zi; n = ai; k = ri;
 }
 
-void SphericalMesh::blur( float rate)
+void SphericalMesh::blur( const Parameter& param)
 {
-	size_t zsz = zenithLimits.size();
-	size_t asz = azimuthLimits.size();
-	size_t rsz = radiusLimits.size();
-	float piXrate = pi * rate;
-	float dz = piXrate / zsz;
-	float da = piXrate / asz;
-	for( size_t i = 0; i < zsz; ++i )
+	if( param.brate <= eps)
+		return;
+
+	float delta = param.dz * param.brate;
+	for( size_t i = 0; i < zenithLimits.size(); ++i )
 	{
-		zenithLimits[i].first -= dz;
-		zenithLimits[i].second += dz;
+		zenithLimits[i].first -= delta;
+		zenithLimits[i].second += delta;
 	}
-	for (size_t i = 0; i < asz; ++i) {
-		azimuthLimits[i].first -= da;
-		azimuthLimits[i].second += da;
+	delta = param.da * param.brate;
+	for (size_t i = 0; i < azimuthLimits.size(); ++i) {
+		azimuthLimits[i].first -= delta;
+		azimuthLimits[i].second += delta;
 	}
-	float dr;
-	for (size_t i = 0; i < rsz; ++i) {
-		dr = ( radiusLimits[i].second - radiusLimits[i].first)* rate;
+
+	delta = param.dr * param.brate;
+	for (size_t i = 0; i < radiusLimits.size(); ++i) {
 		// this over-complicated computation is for future uneven radius extension
-		radiusLimits[i].first -= dr;
-		radiusLimits[i].second += dr;
+		radiusLimits[i].first -= delta;
+		radiusLimits[i].second += delta;
 	}
 	radiusLimits[0].first = 0.0f; //restrict the origin
 }
@@ -126,21 +154,31 @@ void Descriptor::extract( const Neuron& neuron)
 	Matrixf E = vv2matrix( neuron.get_edges());
 	Vector3 zenith = calcZenith( E);
 	float rmax = alignZenith(zenith);
-	int nr = m_Mesh.create(m_Param, rmax);
-	m_Size[0] = m_Param.na * m_Param.nz; // # of rows
-	m_Size[1] = nr; //# of cols
-	m_Size[2] = m_Param.na; //# of pages
+	m_Param.update_nr( rmax );
+	m_Mesh.create(m_Param);
 	createHist( );
+	cout << "created histograms"<<endl;
+}
+void Descriptor::dump(const char * file, const char* name) const {
+	vector<float* > buffer;
+	vector<size_t> m(page(), height());
+	vector<size_t> n(page(), width());
+	for( size_t k = 0; k < page(); ++k){
+		buffer.push_back( m_vHistPtr[k]->col_major());
+	}
+	write_matfile(file, name, m, n, buffer);
+	for_each(buffer.begin(), buffer.end(), del_fun<float*>());
 }
 
 void Descriptor::gatherPoints( const Neuron& n)
 {
 	m_Points.clear();
-	m_Points.assign(n.get_bi_points().begin(), n.get_bi_points().end() );
+	m_Points.assign( n.get_bi_points().begin(), n.get_bi_points().end() );
 	m_Points.insert( m_Points.end(), n.get_sa_points().begin(), n.get_sa_points().end() );
+
 	m_Weights.clear();
 	m_Weights.assign( n.get_bi_diameters().begin(), n.get_bi_diameters().end() );
-	m_Weights.insert( m_Weights.end(), n.get_sa_diameters().begin(), n.get_sa_diameters().end() );
+	m_Weights.insert(m_Weights.end(), n.get_sa_diameters().begin(), n.get_sa_diameters().end() );
 }
 
 Vector3 Descriptor::calcZenith(const Matrixf& E) {
@@ -180,18 +218,17 @@ float Descriptor::alignZenith( const Vector3 & zenith) {
 
 void Descriptor::createHist()
 {
-	Matrixf* pHist = new Matrixf(m_Size[0], m_Size[1]);
+	Matrixf* pHist = new Matrixf(height(), width());
 	double swt, swb; //summed weight of top half and summed weight of bottom half
 	swt = swb = 0;
-	int zi, ai, ri;
+	size_t zi, ai, ri;
 	for( size_t i = 0; i < m_Points.size(); ++i){
 		m_Mesh.get_index(m_Points[i], zi, ai, ri);
-		float weight = m_Weights[i];
-		(*pHist)( ai * m_Param.nz + zi, ri) += weight;
-		if( zi <= m_Param.nz/2)
-			swt += weight;
+		(*pHist)( ai * m_Param.nz + zi, ri) += m_Weights[i];
+		if( zi <= size_z() / 2)
+			swt += m_Weights[i];
 		else
-			swb += weight;
+			swb += m_Weights[i];
 	}
 	m_vHistPtr.push_back( pHist);
 	if( swt > swb) // always keep
@@ -208,9 +245,9 @@ void Descriptor::flipHist()
 
 void Descriptor::rotateHist()
 {
-	for( int k = 1; k < m_Param.na; ++k ){
+	for( size_t k = 1; k < size_a(); ++k ){
 		Matrixf* pm = new Matrixf(*m_vHistPtr[k-1]);
-		pm->rshrows(m_Param.nz);
+		pm->rshrows( size_z() );
 		m_vHistPtr.push_back( pm );
 	}
 }
