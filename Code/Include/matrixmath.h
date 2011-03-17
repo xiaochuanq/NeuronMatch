@@ -8,6 +8,7 @@
 #ifndef MATRIXMATH_H_
 #define MATRIXMATH_H_
 
+#include "OgreMath/OgreMath.h"
 #include "matrix.hpp"
 using namespace matrixmath;
 

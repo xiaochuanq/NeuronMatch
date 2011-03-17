@@ -10,13 +10,15 @@
 
 #include <vector>
 #include <utility>
+#include <iostream>
 #include "del_functor.hpp"
-#include "Math/OgreMath.h"
-#include "Math/matrixmath.h"
+#include "matrixmath.h"
 using std::vector;
 using std::pair;
 
 class Descriptor;
+class SphericalMesh;
+
 Matrixf vv2matrix(const vector<Vector3>& points); // dump a vector of Vector3 to a matrix
 bool is_comparable(const Descriptor &, const Descriptor &);
 float distance(const Descriptor &, const Descriptor &);
@@ -26,21 +28,23 @@ public:
 	friend class Descriptor;
 	friend class SphericalMesh;
 	Parameter(size_t z, size_t a, float r, float b = 0) :
-		nz(z), na(a), dr(r), brate(b), dz(pi/nz), da(two_pi/na) {};
-private:
+		nz(z), na(a), nr(0), dr(r), dz(pi/nz), da(two_pi/na), brate(b) {};
+	friend ostream& operator <<( ostream&, Parameter&);
 	void update_nr(float rmax){ nr = std::ceil( rmax / dr); }
+public:
 	size_t nz;
 	size_t na;
+	size_t nr;
 	float dr;
-	float brate;
 	float dz;
 	float da;
-	size_t nr;
+	float brate;
 	// TODO: add function ptr to weighting function
 };
 
 typedef pair<float, float> Range;
 struct SphericalMesh {
+	friend ostream& operator <<( ostream&, SphericalMesh&);
 	vector<Range> zenithLimits;
 	vector<Range> azimuthLimits;
 	vector<Range> radiusLimits;
@@ -91,5 +95,8 @@ private:
 	vector<float> m_Weights; // weights calculated corresponding to all the points above.
 	vector<Matrixf*> m_vHistPtr;
 };
+
+ostream& operator <<( ostream&, Parameter&);
+ostream& operator <<( ostream&, SphericalMesh&);
 
 #endif /* DESC_H_ */

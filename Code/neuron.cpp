@@ -8,7 +8,7 @@
 #include "neuron.h"
 #include "myexception.hpp"
 #include "del_functor.hpp"
-#include "Math/OgreVector3.h"
+#include "matrixmath.h"
 
 using namespace std;
 

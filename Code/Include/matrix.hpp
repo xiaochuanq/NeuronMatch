@@ -235,21 +235,21 @@ public:
    size_t ColNo () const { return _m->Col; }
 
    T* row_major() const {
-	   T* data = new T[ _m->Row * _m->Col];
+	   T* data = new T[ RowNo() * ColNo()];
 	   T* p = data;
-	   for( int r = 0; r < _m->Row; ++r)
+	   for( size_t r = 0; r < RowNo(); ++r)
 	   {
-		   memcpy(p, _m->Val[r], _m->Col);
-		   p += _m->Col;
+		   memcpy(p, _m->Val[r], sizeof(T) * ColNo());
+		   p += ColNo();
 	   }
 	   return data;
    }
 
    T* col_major() const{
-	   T* data = new T[ _m->Row * _m->Col];
-	   for( size_t r = 0; r < _m->Row; ++r){
-		   for( size_t c = 0; c < _m->Col; ++c){
-			   data[ r + c * _m->Row ] = (_m->Val[r])[c];
+	   T* data = new T[ RowNo() * ColNo() ];
+	   for( size_t r = 0; r < RowNo(); ++r){
+		   for( size_t c = 0; c < ColNo(); ++c){
+			   data[ r + c * RowNo() ] = (_m->Val[r])[c];
 		   }
 	   }
 	   return data;
@@ -375,24 +375,23 @@ MAT_TEMPLATE inline void
 matrixT::rshrows(int num_rows)
 {
 	if (_m->Refcnt > 1) clone();
-	if( !num_rows || !_m->Row )
+	if( !num_rows || !RowNo() )
 		return;
-	int dir = (num_rows > 0) ? 1 : -1; //+1, shift down, -1: shift up
-	num_rows %= _m->Row;
-	T** temp = new T*[ num_rows];
-	if( dir > 0){
-		std::copy(_m->Val, _m->Val + num_rows, temp);
-		for( size_t i = num_rows; i < _m->Row; ++i )
-			_m->Val[i - num_rows ] = _m->Val[ i ];
-		std::copy( temp, temp + _m->Row, _m->Val + _m->Row - num_rows);
+	if( num_rows < 0){  //shift up
+		num_rows = (-num_rows) % RowNo();
+		// Attention. Module operator can be implemented differently by compilers.
+		if( !num_rows)
+			return;
+		T** temp = new T*[ RowNo() ];
+		std::copy(_m->Val, _m->Val +  RowNo(), temp);
+		std::copy(temp + num_rows, temp + RowNo(), _m->Val);
+		std::copy( temp, temp + num_rows, _m->Val + RowNo() - num_rows);
+		delete[] temp;
 	}
-	else {
-		std::copy( _m->Val + _m->Row - num_rows , _m->Val + _m->Row, temp);
-		for( size_t i = 0; i < _m->Row - num_rows; ++i )
-			_m->Val[ i ] = _m->Val[ i + num_rows ];
-		std::copy( temp, temp + _m->Row, _m->Val);
+	else { //num_rows > 0, shift down.
+		num_rows %= RowNo();
+		rshrows( num_rows - RowNo());
 	}
-	delete temp;
 }
 
 MAT_TEMPLATE inline void

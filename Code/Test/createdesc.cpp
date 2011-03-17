@@ -23,11 +23,11 @@ int main( int argc, const char* argv[])
 		n.setType(Neuron::UnknownType);
 		n.labelType(Neuron::UnclassifiedType);
 		n.resample(0.1f);
-		Parameter pram(12, 24, 5, 0.2);
+		Parameter pram(12, 24, 20, 0.0);
 		Descriptor desc( pram );
 		desc.extract(n);
 		cout <<"Feature extracted." <<endl;
-		desc.dump("~/Document/MATLAB/test.mat", "test");
+		desc.dump("test.mat", "test");
 	}
 	ifs.close();
 	return 0;

@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <vector>
+#include "del_functor.hpp"
 #include "dataio.h"
 #include "desc.h"
 #include "mat.h"
@@ -90,7 +91,7 @@ void read_matfile(const char* file, Descriptor& desc) {
 int write_matfile(const char* file, const char* name,
 		const vector<size_t>& m,
 		const vector<size_t>& n,
-		const vector<float*>& data)
+		const vector<double*>& data)
 {
 	MATFile *pmat;
 	int status;
@@ -110,7 +111,7 @@ int write_matfile(const char* file, const char* name,
 			return (-1);
 		}
 
-		memcpy((void *) (mxGetPr(pdesc)), (void *) data[k], sizeof(data[k]));
+		memcpy((void *) (mxGetPr(pdesc)), (void *) data[k], m[k]*n[k]*sizeof(double));
 		char str[256];
 		sprintf(str, "Desc_%s_%u", name, static_cast<unsigned>(k) );
 		status = matPutVariable(pmat, str, pdesc);
@@ -127,5 +128,29 @@ int write_matfile(const char* file, const char* name,
 	}
 	return 0;
 
+}
+
+ double* float2double(const float* f, size_t sz) {
+	double *d = new double[sz];
+	double sum = 0;
+	double sumf = 0.0f;
+	for( size_t i=0; i < sz; ++i){
+		sumf += f[i];
+		d[i] = static_cast<double>(f[i]);
+		sum += d[i];
+	}
+	return d;
+}
+ int write_matfile(const char* file, const char* name,
+		const vector<size_t>& m,
+		const vector<size_t>& n,
+		const vector<float*>& data){
+	vector<double*> temp;
+	for( size_t i = 0; i < data.size(); ++i){
+		temp.push_back( float2double(data[i], m[i]*n[i]) );
+	}
+	int ret = write_matfile(file, name, m, n, temp);
+	for_each( temp.begin(), temp.end(), del_array_fun<double*>());
+	return ret;
 }
 

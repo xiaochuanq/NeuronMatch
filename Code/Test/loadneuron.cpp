@@ -6,6 +6,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include "neuron.h"
 using namespace std;
 

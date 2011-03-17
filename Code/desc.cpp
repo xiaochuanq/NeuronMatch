@@ -5,10 +5,13 @@
  *      Author: xiaochuanq
  */
 #include <memory>
+#include <sstream>
+#include <cassert>
 #include "desc.h"
 #include "dataio.h"
 #include "neuron.h"
 #include "myexception.hpp"
+
 
 Matrixf vv2matrix(const vector<Vector3>& points) {
 	size_t n = points.size();
@@ -26,6 +29,9 @@ bool is_comparable( const Descriptor & desc1, const Descriptor & desc2){
 
 inline float chi_diff(float f1, float f2)
 {
+	assert( f1 > 0 && f2 > 0); // rule out invalid inputs which make f1 + f2 == 0
+	if( f1 < eps && f2 < eps)
+		return 0.0f;
 	float diff = f1 - f2;
 	diff *= diff;
 	return diff / (f1 + f2);
@@ -55,6 +61,43 @@ float distance( const Descriptor & desc1, const Descriptor & desc2){
 	}
 	return mindiff;
 }
+
+ostream& operator <<( ostream& os, Parameter& p)
+{
+	os << "Variable:\tnz\tna\tnr\tdz\tda\tdr\tbrate"<<endl;
+	os << "   Value:\t"<<p.nz<<"\t"<<p.na<<"\t"<<p.nr<<"\t"
+			<<p.dz<<"\t"<<p.da<<"\t"<<p.dr<<"\t"<<p.brate;
+	return os;
+}
+
+ostream& operator <<( ostream& os, SphericalMesh& s)
+{
+	for( size_t i = 0; i < s.zenithLimits.size(); ++i){
+		cout << s.zenithLimits[i].first <<"\t";
+	}
+	cout << endl;
+	for( size_t i = 0; i < s.zenithLimits.size(); ++i){
+		cout << s.zenithLimits[i].second <<"\t";
+	}
+	cout << endl;
+	for( size_t i = 0; i < s.azimuthLimits.size(); ++i){
+		cout << s.azimuthLimits[i].first <<"\t";
+	}
+	cout << endl;
+	for( size_t i = 0; i < s.azimuthLimits.size(); ++i){
+		cout << s.azimuthLimits[i].second <<"\t";
+	}
+	cout << endl;
+	for( size_t i = 0; i < s.radiusLimits.size(); ++i){
+		cout << s.radiusLimits[i].first <<"\t";
+	}
+	cout << endl;
+	for( size_t i = 0; i < s.radiusLimits.size(); ++i){
+		cout << s.radiusLimits[i].second <<"\t";
+	}
+	return os;
+}
+
 /////////////////////////////  Class Spherical Mesh ////////////////
 void SphericalMesh::create( const Parameter& param)
 {
@@ -91,20 +134,23 @@ void SphericalMesh::get_index(const Vector3 & sphCoord, size_t& m, size_t& n, si
 {
 	int zi, ai, ri;
 	zi = ai = ri = -1;
+	// index theta, for definition, check "Vector3.h"
 	for (size_t i = 0; i < zenithLimits.size(); ++i) {
-		if (sphCoord.y >= zenithLimits[i].first && sphCoord.y
+		if (sphCoord.x >= zenithLimits[i].first && sphCoord.x
 				< zenithLimits[i].second) {
 			zi = i;
 			break;
 		}
 	}
+	// index phi
 	for (size_t i = 0; i < azimuthLimits.size(); ++i) {
-		if (sphCoord.x >= azimuthLimits[i].first && sphCoord.x
+		if (sphCoord.y >= azimuthLimits[i].first && sphCoord.y
 				< azimuthLimits[i].second) {
 			ai = i;
 			break;
 		}
 	}
+	// index r
 	for (size_t i = 0; i < radiusLimits.size(); ++i) {
 		if (sphCoord.z >= radiusLimits[i].first && sphCoord.z
 				< radiusLimits[i].second) {
@@ -113,7 +159,11 @@ void SphericalMesh::get_index(const Vector3 & sphCoord, size_t& m, size_t& n, si
 		}
 	}
 	if ( zi < 0 || ai < 0 || ri < 0)
-		throw MyException("Invalid coordinates or range limits.");
+	{
+		std::stringstream ss;
+		ss << sphCoord;
+		throw MyException(ss.str() + "Invalid coordinates or range limits.");
+	}
 	m = zi; n = ai; k = ri;
 }
 
@@ -167,7 +217,7 @@ void Descriptor::dump(const char * file, const char* name) const {
 		buffer.push_back( m_vHistPtr[k]->col_major());
 	}
 	write_matfile(file, name, m, n, buffer);
-	for_each(buffer.begin(), buffer.end(), del_fun<float*>());
+	for_each(buffer.begin(), buffer.end(), del_array_fun<float*>());
 }
 
 void Descriptor::gatherPoints( const Neuron& n)
@@ -190,6 +240,7 @@ Vector3 Descriptor::calcZenith(const Matrixf& E) {
 	float eigvalue[3];
 	Vector3 eigvector[3];
 	M.EigenSolveSymmetric(eigvalue, eigvector);
+	// this function always returns positive eigenvalues
 	int idx = eigvalue[0] > eigvalue[1] ? 0 : 1;
 	idx = eigvalue[idx] > eigvalue[2] ? idx : 2;
 	eigvector[idx].normalise();
@@ -210,7 +261,7 @@ float Descriptor::alignZenith( const Vector3 & zenith) {
 	int rmax = -1e6;
 	for( size_t i = 0; i < m_Points.size(); ++i){
 		m_Points[i] = T * m_Points[i];
-		m_Points[i].card2spherical();
+		m_Points[i].cart2spherical();
 		rmax = max( rmax,m_Points[i].z );
 	}
 	return rmax;

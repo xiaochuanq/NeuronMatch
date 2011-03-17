@@ -15,6 +15,13 @@ struct del_fun
    }
 };
 
+template<typename T>
+struct del_array_fun
+{
+	void operator()(T p){
+		delete[] p;
+	}
+};
 
 template<class A, class B>
 struct DeleteMapFntor

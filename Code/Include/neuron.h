@@ -5,7 +5,7 @@
 #include <string>
 #include <istream>
 #include <ostream>
-#include "OgreMath.h"
+#include "matrixmath.h"
 
 enum NeuronType{
 		INVALID = -1, //for error caught
