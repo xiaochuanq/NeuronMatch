@@ -517,7 +517,7 @@ int main(void) {
 		GeneratePoints(thePoints);
 		size_t zi, ai, ri;
 
-		Parameter param1(12, 24, 5, 0.0);
+		DescParameter param1(12, 24, 5, 0.0);
 		cout << param1 << endl;
 		param1.update_nr(20);
 		cout << param1 << endl;
@@ -542,7 +542,7 @@ int main(void) {
 
 		write_matfile("./test1.mat", "test1", M, N, Data);
 
-		Parameter param2(12, 24, 5, 0.2);
+		DescParameter param2(12, 24, 5, 0.2);
 		cout << param2 << endl;
 		param2.update_nr(20);
 		cout << param2 << endl;

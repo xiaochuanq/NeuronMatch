@@ -23,13 +23,13 @@ Matrixf vv2matrix(const vector<Vector3>& points); // dump a vector of Vector3 to
 bool is_comparable(const Descriptor &, const Descriptor &);
 float distance(const Descriptor &, const Descriptor &);
 
-class Parameter {
+class DescParameter {
 public:
 	friend class Descriptor;
 	friend class SphericalMesh;
-	Parameter(size_t z, size_t a, float r, float b = 0) :
+	DescParameter(size_t z, size_t a, float r, float b = 0) :
 		nz(z), na(a), nr(0), dr(r), dz(pi/nz), da(two_pi/na), brate(b) {};
-	friend ostream& operator <<( ostream&, Parameter&);
+	friend ostream& operator <<( ostream&, DescParameter&);
 	void update_nr(float rmax){ nr = std::ceil( rmax / dr); }
 public:
 	size_t nz;
@@ -42,21 +42,37 @@ public:
 	// TODO: add function ptr to weighting function
 };
 
+struct Index3D{
+	int zidx;
+	int aidx;
+	int ridx;
+};
+
 typedef pair<float, float> Range;
 struct SphericalMesh {
 	friend ostream& operator <<( ostream&, SphericalMesh&);
 	vector<Range> zenithLimits;
 	vector<Range> azimuthLimits;
 	vector<Range> radiusLimits;
-	void create(const Parameter&);
+	void create(const DescParameter&);
 	void get_index(const Vector3 &, size_t&, size_t&, size_t&);
-	void blur(const Parameter&);
+};
+
+struct BlurredSphericalMesh : public SphericalMesh
+{
+	friend ostream& operator <<( ostream&, BlurredSphericalMesh&);
+	vector<Range> zenithBlurredLimits;
+	vector<Range> azimuthBlurredLimits;
+	vector<Range> radiusLBlurredimits;
+	vector< Index3D > get_index(const Vector3 &);
+private:
+	void blur(const DescParameter&);
 };
 
 class Neuron;
 class Descriptor {
 public:
-	Descriptor(const Parameter& param) :m_Param(param){	};
+	Descriptor(const DescParameter& param) :m_Param(param){	};
 	~Descriptor();
 public:
 	float operator()(size_t i, size_t j, size_t k) const {
@@ -81,22 +97,37 @@ public:
 
 	void extract(const Neuron&);
 private:
+	void decomposeAxis(const Matrixf&, Vector3& xAxis,  Vector3& yAxis, Vector3& zAxis);
+	void alignAxis(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 	Vector3 calcZenith(const Matrixf&);
 	float alignZenith(const Vector3&);
 	void gatherPoints(const Neuron&);
 	//void calcWeights() { };
-	void createHist();
-	void flipHist();
-	void rotateHist();
+	void create();
+	void vFlip();
+	void hFlip();
+	void rotate();
 private:
-	Parameter m_Param; // parameters
+	DescParameter m_Param; // parameters
 	SphericalMesh m_Mesh;//shape context mesh
 	vector<Vector3> m_Points; // all points collected to be used in the shape context descriptor
 	vector<float> m_Weights; // weights calculated corresponding to all the points above.
 	vector<Matrixf*> m_vHistPtr;
 };
 
-ostream& operator <<( ostream&, Parameter&);
+class UnitDescriptor
+{
+public:
+	UnitDescriptor(int nz, int na, int nr);
+};
+
+class UnitLogrDescriptor
+{
+public:
+	UnitLogrDescriptor();
+};
+
+ostream& operator <<( ostream&, DescParameter&);
 ostream& operator <<( ostream&, SphericalMesh&);
 
 #endif /* DESC_H_ */

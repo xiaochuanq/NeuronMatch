@@ -27,10 +27,11 @@ istream& operator>>(istream& is, NeuronNode& node) {
 /******************************** Neuron Cell/Tree Model *******************************/
 Neuron::Neuron(ifstream& fs)
 {
+	m_fMaxR = -1e6;
 	string buffer;
 	getline(fs, buffer);
 	while (fs) { // skip all the comments
-		size_t pos = buffer.find_first_not_of(" \t"); // skill possible blank spaces
+		size_t pos = buffer.find_first_not_of(" \t"); // skip possible blank spaces
 		if (pos != string::npos && buffer[pos] != '#') // and check if it is a '#'
 			break; //stops only when it is a non empty string not starting with #.
 		getline(fs, buffer);
@@ -53,7 +54,10 @@ Neuron::Neuron(ifstream& fs)
 			break;
 		stringstream ss(buffer);
 		ss >> *pnode;
-		pnode->Coordinate -= m_pSoma->Coordinate;
+		pnode->Coordinate -= m_pSoma->Coordinate; //centerize to soma;
+		float r = pnode->Coordinate.length();
+		if( m_fMaxR < r)
+			m_fMaxR = r;
 		append(pnode);
 	}
 	m_pSoma->Coordinate = Vector3(0.0f);
@@ -61,7 +65,7 @@ Neuron::Neuron(ifstream& fs)
 
 void Neuron::dump() const {
 	for( size_t i = 1; i < m_vNodePtrArry.size(); ++i)
-		cout << *m_vNodePtrArry[i] << endl;;
+		cout << *m_vNodePtrArry[i] << endl;
 	cout << endl;
 	traverse_dump(m_pSoma);
 }
@@ -118,4 +122,34 @@ void Neuron::sample( NeuronNode* proot, float steplen, float start)
 		}
 		sample( pchild, steplen, len - start + steplen);
 	}
+}
+
+void Neuron::normalize()
+{
+	if( m_fMaxR == 0)
+		return;
+	for( size_t i = 1; i < m_vNodePtrArry.size(); ++i)
+		m_vNodePtrArry[i]->scale(1/m_fMaxR);
+}
+
+bool Neuron::verify(){
+	for( size_t i = 1; i < m_vNodePtrArry.size(); ++i)
+			m_vNodePtrArry[i]->markVisited(false);
+	return traverse_verify( m_pSoma );
+}
+
+int Neuron::traverse_verify( NeuronNode* node)
+{
+	if( node ){
+		if( node->isVisited() )
+			return -1; // error in the tree structure!
+		node->markVisited(true);
+		for( std::list<NeuronNode*>::iterator it = node->Children.begin();
+				it != node->Children.end(); ++it){
+			if( traverse_verify(*it) ){
+				return -1;
+			}
+		}
+	}
+	return 0;
 }

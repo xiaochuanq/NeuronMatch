@@ -23,7 +23,7 @@ int main( int argc, const char* argv[])
 		n.setType(Neuron::UnknownType);
 		n.labelType(Neuron::UnclassifiedType);
 		n.resample(0.1f);
-		Parameter pram(12, 24, 20, 0.0);
+		DescParameter pram(12, 24, 20, 0.0);
 		Descriptor desc( pram );
 		desc.extract(n);
 		cout <<"Feature extracted." <<endl;

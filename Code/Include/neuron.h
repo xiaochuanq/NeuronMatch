@@ -27,12 +27,17 @@ class NeuronNode {
 	void addChild(NeuronNode* p) {
 		Children.push_back(p);
 	}
+	void scale(float s) { Coordinate*=s; 	}
+	void markVisited( bool v)	{ visited = v; 	}
+	bool isVisited() { return visited; }
+
 	std::list<NeuronNode*> Children;
 	int ID;
 	int Type;
 	int Parent;
 	Vector3 Coordinate;
 	float Diameter;
+	bool visited;
 };
 
 class Neuron
@@ -63,10 +68,15 @@ public: //constructors
     void labelType(NeuronType t) {m_nPred = t; }
     void setName( const std::string & str){ m_strName = str; }
     void dump() const; // for debug uses
+    float maxRadius() const { return m_fMaxR; }
+    void normalize();
+    bool verify();
 private: // facilities
+    Neuron();
     void sample( NeuronNode*, float, float);
     void append(NeuronNode*);
     void traverse_dump(NeuronNode*) const;
+    int traverse_verify( NeuronNode* node);
 private: // data
     NeuronType m_nType;
     NeuronType m_nPred;
@@ -78,6 +88,7 @@ private: // data
     std::vector<Vector3> m_vv3Edges;
     std::vector<Vector3> m_vv3Bifurcations;
     std::vector<float> m_vBifurDiameters;
+    float m_fMaxR;
 };
 
 

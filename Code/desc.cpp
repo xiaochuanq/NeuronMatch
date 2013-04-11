@@ -62,7 +62,7 @@ float distance( const Descriptor & desc1, const Descriptor & desc2){
 	return mindiff;
 }
 
-ostream& operator <<( ostream& os, Parameter& p)
+ostream& operator <<( ostream& os, DescParameter& p)
 {
 	os << "Variable:\tnz\tna\tnr\tdz\tda\tdr\tbrate"<<endl;
 	os << "   Value:\t"<<p.nz<<"\t"<<p.na<<"\t"<<p.nr<<"\t"
@@ -99,7 +99,7 @@ ostream& operator <<( ostream& os, SphericalMesh& s)
 }
 
 /////////////////////////////  Class Spherical Mesh ////////////////
-void SphericalMesh::create( const Parameter& param)
+void SphericalMesh::create( const DescParameter& param)
 {
 	zenithLimits.clear();
 	azimuthLimits.clear();
@@ -127,7 +127,12 @@ void SphericalMesh::create( const Parameter& param)
 		rgn.second = r;
 		radiusLimits.push_back( rgn );
 	}
-	blur( param );
+}
+
+
+vector<Index3D>BlurredSphericalMesh:: get_index(const Vector3 &)
+{
+
 }
 
 void SphericalMesh::get_index(const Vector3 & sphCoord, size_t& m, size_t& n, size_t& k)
@@ -167,7 +172,7 @@ void SphericalMesh::get_index(const Vector3 & sphCoord, size_t& m, size_t& n, si
 	m = zi; n = ai; k = ri;
 }
 
-void SphericalMesh::blur( const Parameter& param)
+void BlurredSphericalMesh::blur( const DescParameter& param)
 {
 	if( param.brate <= eps)
 		return;
@@ -206,7 +211,7 @@ void Descriptor::extract( const Neuron& neuron)
 	float rmax = alignZenith(zenith);
 	m_Param.update_nr( rmax );
 	m_Mesh.create(m_Param);
-	createHist( );
+	create( );
 	cout << "created histograms"<<endl;
 }
 void Descriptor::dump(const char * file, const char* name) const {
@@ -241,14 +246,68 @@ Vector3 Descriptor::calcZenith(const Matrixf& E) {
 	Vector3 eigvector[3];
 	M.EigenSolveSymmetric(eigvalue, eigvector);
 	// this function always returns positive eigenvalues
+	for( int i = 0; i < 3; ++i){
+		eigvalue[i] *= eigvector[i].normalise();
+	}
 	int idx = eigvalue[0] > eigvalue[1] ? 0 : 1;
 	idx = eigvalue[idx] > eigvalue[2] ? idx : 2;
 	eigvector[idx].normalise();
 	return eigvector[idx];
 }
 
-// some float * to int * errors below
+void Descriptor::decomposeAxis(const Matrixf&, Vector3& xAxis,  Vector3& yAxis, Vector3& zAxis)
+{
+	Matrixf Et = ~E; // E is supposed to be n-by-3, and E transpose is 3-by-n
+	Matrixf EtE = Et * E; // Etranspose * E should be 3-by-3
+	Matrix3 M( EtE(0,0), EtE(0,1), EtE(0,2),
+			EtE(1,0), EtE(1,1), EtE(1,2),
+			EtE(2,0), EtE(2,1), EtE(2,2) );
+	float eigvalue[3];
+	Vector3 eigvector[3];
+	M.EigenSolveSymmetric(eigvalue, eigvector);
+	for( int i = 0; i < 3; ++i){
+		eigvalue[i] *= eigvector[i].normalise();
+	}
+	// Always set y > z > x
+	if( eigvalue[0] > eigvalue[1]){ // 0 > 1
+		if( eigvalue[1] > eigvalue[2]){//0 > 1 > 2
+			yAxis = eigvector[0];
+			zAxis = eigvector[1];
+			xAxis = eigvector[2];
+		}
+		else /* 0 > 1, 1 < 2*/
+			if( eigvalue[0] < eigvalue[2]){ //2 > 0 > 1
+			yAxis = eigvector[2];
+			zAxis = eigvector[0];
+			xAxis = eigvector[1];
+		}
+		else{ // 0 > 2 > 1
+			yAxis = eigvector[0];
+			zAxis = eigvector[2];
+			xAxis = eigvector[1];
+		}
+	}
+	else{ // 0 < 1
+		if( eigvalue[1] < eigvalue[2]){ // 2 > 1 > 0
+			yAxis = eigvector[2];
+			zAxis = eigvector[1];
+			xAxis = eigvector[0];
+		}
+		else /* 0<1, 2<1*/
+			if( eigvalue[0] < eigvalue[2]){ // 1 > 2 > 0
+			yAxis = eigvector[1];
+			zAxis = eigvector[2];
+			xAxis = eigvector[0];
+		}
+		else{ // 1 > 0 > 2{
+			yAxis = eigvector[1];
+			zAxis = eigvector[0];
+			xAxis = eigvector[2];
+		}
+	}
+}
 
+// some float * to int * errors below
 float Descriptor::alignZenith( const Vector3 & zenith) {
 	float cosbeta = zenith.dotProduct( Vector3(0.0, 0.0, 1.0) );
 	float beta = asin( sqrt( 1 - cosbeta * cosbeta) );
@@ -267,7 +326,7 @@ float Descriptor::alignZenith( const Vector3 & zenith) {
 	return rmax;
 }
 
-void Descriptor::createHist()
+void Descriptor::create()
 {
 	Matrixf* pHist = new Matrixf(height(), width());
 	double swt, swb; //summed weight of top half and summed weight of bottom half
@@ -283,18 +342,11 @@ void Descriptor::createHist()
 	}
 	m_vHistPtr.push_back( pHist);
 	if( swt > swb) // always keep
-		flipHist();
-	rotateHist();
+		vFlip();
+	rotate();
 }
 
-void Descriptor::flipHist()
-{
-	int nRow = m_vHistPtr[0]->RowNo();
-	for( int i = 0; i < nRow/2; ++i)
-		m_vHistPtr[0]->swaprows(i, nRow - i);
-}
-
-void Descriptor::rotateHist()
+void Descriptor::rotate()
 {
 	for( size_t k = 1; k < size_a(); ++k ){
 		Matrixf* pm = new Matrixf(*m_vHistPtr[k-1]);
@@ -304,3 +356,13 @@ void Descriptor::rotateHist()
 }
 
 
+void Descriptor::vFlip()
+{
+	int nRow = m_vHistPtr[0]->RowNo();
+	for( int i = 0; i < nRow/2; ++i)
+		m_vHistPtr[0]->swaprows(i, nRow - i);
+}
+void Descriptor::hFlip()
+{
+
+}
